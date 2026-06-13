@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
 import UploadZone from "../components/UploadZone";
 import { getStats } from "../services/api";
+import { Link } from "react-router-dom";
 
 const fadeUp = {
   hidden: {
@@ -165,8 +166,20 @@ export default function Hero() {
               leading-relaxed
             "
           >
-            Sube tu horario oficial UDES y transforma
-            tu PDF académico en un calendario totalmente
+            <Link
+              to="/guide"
+              className="
+                text-cyan-400
+                font-semibold
+                hover:text-cyan-300
+                underline
+                underline-offset-4
+                transition-colors
+              "
+            >
+              Descarga tu horario oficial UDES en Genesis
+            </Link>
+            {" "}y transfórmalo en un calendario totalmente
             organizado y compatible con Google Calendar,
             Outlook y Apple Calendar.
 

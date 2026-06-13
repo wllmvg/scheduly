@@ -6,6 +6,7 @@ import Home from "../pages/Home";
 import Result from "../pages/Result";
 import Credits from "../pages/Credits";
 import Features from "../pages/Features";
+import Guide from "../pages/Guide";
 
 export const router = createBrowserRouter([
   {
@@ -26,6 +27,10 @@ export const router = createBrowserRouter([
       {
         path: "/result",
         element: <Result />,
+      },
+      {
+        path: "/guide",
+        element: <Guide />,
       },
     ],
   },
