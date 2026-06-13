@@ -14,6 +14,26 @@ const fadeUp = {
   },
 };
 
+function AnimatedCounter({ value }: { value: number }) {
+  const [display, setDisplay] = useState(0);
+
+  useEffect(() => {
+    const duration = 1200;
+    const start = performance.now();
+
+    const animate = (now: number) => {
+      const progress = Math.min((now - start) / duration, 1);
+      const eased = 1 - Math.pow(1 - progress, 3);
+      setDisplay(Math.round(eased * value));
+      if (progress < 1) requestAnimationFrame(animate);
+    };
+
+    requestAnimationFrame(animate);
+  }, [value]);
+
+  return <>{display.toLocaleString()}</>;
+}
+
 export default function Hero() {
   const [count, setCount] = useState<number | null>(null);
 
@@ -163,9 +183,32 @@ export default function Hero() {
           {count !== null && (
             <motion.div
               variants={fadeUp}
-              className="mt-6 text-cyan-400 font-bold text-lg"
+              className="
+                mt-6
+                flex
+                items-center
+                justify-center
+                gap-3
+                px-6
+                py-4
+                rounded-2xl
+                bg-white/5
+                backdrop-blur-sm
+                border
+                border-white/10
+                max-w-xs
+                mx-auto
+              "
             >
-              +{count} horarios procesados
+              <i className="ti ti-calendar-check text-3xl text-cyan-400" />
+              <div className="text-left">
+                <div className="text-3xl font-black text-cyan-400">
+                  <AnimatedCounter value={count} />
+                </div>
+                <div className="text-xs text-gray-400">
+                  horarios procesados
+                </div>
+              </div>
             </motion.div>
           )}
         </motion.div>
