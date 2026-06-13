@@ -2,15 +2,15 @@ import { Menu, X, CalendarDays } from "lucide-react";
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Link, useLocation } from "react-router-dom";
-
+ 
 export default function Navbar() {
   const [open, setOpen] = useState(false);
   const location = useLocation();
-
+ 
   useEffect(() => {
     setOpen(false);
   }, [location.pathname]);
-
+ 
   return (
     <header className="fixed inset-x-0 top-0 z-50 backdrop-blur-xl bg-black/70 border-b border-white/10">
       <div className="w-full max-w-7xl mx-auto px-4 sm:px-6">
@@ -20,7 +20,7 @@ export default function Navbar() {
             className="flex items-center gap-2 sm:gap-3 min-w-0"
           >
             <CalendarDays className="text-blue-500 shrink-0" />
-
+ 
             <AnimatePresence mode="wait">
               <motion.span
                 key={location.pathname === "/" ? "logo" : "home"}
@@ -47,15 +47,22 @@ export default function Navbar() {
               </motion.span>
             </AnimatePresence>
           </Link>
-
+ 
           <nav className="hidden md:flex items-center gap-10">
+            <Link
+              to="/guide"
+              className="hover:text-cyan-400 transition"
+            >
+              ¿Cómo descargo mi horario?
+            </Link>
+ 
             <Link
               to="/features"
               className="hover:text-blue-400 transition"
             >
               ¿Cómo funciona?
             </Link>
-
+ 
             <Link
               to="/credits"
               className="hover:text-blue-400 transition"
@@ -63,7 +70,7 @@ export default function Navbar() {
               Créditos
             </Link>
           </nav>
-
+ 
           <button
             onClick={() => setOpen(!open)}
             className="md:hidden p-1 shrink-0"
@@ -73,7 +80,7 @@ export default function Navbar() {
           </button>
         </div>
       </div>
-
+ 
       <AnimatePresence>
         {open && (
           <motion.div
@@ -85,12 +92,19 @@ export default function Navbar() {
           >
             <div className="flex flex-col p-6 gap-5">
               <Link
+                to="/guide"
+                className="hover:text-cyan-400 transition"
+              >
+                ¿Cómo descargo mi horario?
+              </Link>
+ 
+              <Link
                 to="/features"
                 className="hover:text-blue-400 transition"
               >
                 ¿Cómo funciona?
               </Link>
-
+ 
               <Link
                 to="/credits"
                 className="hover:text-blue-400 transition"

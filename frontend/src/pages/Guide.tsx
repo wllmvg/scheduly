@@ -117,29 +117,7 @@ export default function Guide() {
       </div>
  
       <div className="max-w-6xl mx-auto">
-        {/* BACK BUTTON */}
- 
-        <motion.div
-          initial="hidden"
-          animate="show"
-          variants={fadeUp}
-        >
-          <Link
-            to="/"
-            className="
-              inline-flex
-              items-center
-              gap-2
-              text-gray-400
-              hover:text-cyan-400
-              transition-colors
-            "
-          >
-            <ArrowLeft size={18} />
-            Volver a Scheduly
-          </Link>
-        </motion.div>
- 
+
         {/* HERO */}
  
         <motion.div
