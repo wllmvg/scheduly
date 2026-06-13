@@ -11,7 +11,7 @@ interface WakeUpLoaderProps {
 const MESSAGES = [
   "Despertando el servidor...",
   "Esto puede tardar hasta 60 segundos",
-  "Usamos el plan gratuito de Render 🐢",
+  "Usamos el plan gratuito de Render y el servidor se apaga cuando no hay actividad",
   "Ya casi está listo...",
 ];
 
