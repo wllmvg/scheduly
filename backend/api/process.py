@@ -28,7 +28,7 @@ SUPABASE_KEY = os.environ.get("SUPABASE_KEY")
 
 def increment_counter():
     try:
-        http.post(
+        res = http.post(
             f"{SUPABASE_URL}/rest/v1/rpc/increment_uses",
             headers={
                 "apikey": SUPABASE_KEY,
@@ -37,8 +37,9 @@ def increment_counter():
             },
             json={}
         )
-    except Exception:
-        pass
+        print("INCREMENT STATUS:", res.status_code, res.text)
+    except Exception as e:
+        print("INCREMENT ERROR:", str(e))
 
 
 @app.route("/", methods=["GET"])
