@@ -1,4 +1,7 @@
 import io
+import os
+
+import requests as http
 
 from flask import Flask
 from flask import request
@@ -19,6 +22,24 @@ CORS(
     }
 )
 
+SUPABASE_URL = os.environ.get("SUPABASE_URL")
+SUPABASE_KEY = os.environ.get("SUPABASE_KEY")
+
+
+def increment_counter():
+    try:
+        http.post(
+            f"{SUPABASE_URL}/rest/v1/rpc/increment_uses",
+            headers={
+                "apikey": SUPABASE_KEY,
+                "Authorization": f"Bearer {SUPABASE_KEY}",
+                "Content-Type": "application/json"
+            },
+            json={}
+        )
+    except Exception:
+        pass
+
 
 @app.route("/", methods=["GET"])
 def health():
@@ -28,6 +49,22 @@ def health():
             "message": "Scheduly API running"
         }
     )
+
+
+@app.route("/api/stats", methods=["GET"])
+def stats():
+    try:
+        res = http.get(
+            f"{SUPABASE_URL}/rest/v1/stats?select=count&id=eq.1",
+            headers={
+                "apikey": SUPABASE_KEY,
+                "Authorization": f"Bearer {SUPABASE_KEY}"
+            }
+        )
+        data = res.json()
+        return jsonify({"count": data[0]["count"] if data else 0})
+    except Exception as e:
+        return jsonify({"count": 0, "error": str(e)})
 
 
 @app.route("/api/process", methods=["POST"])
@@ -64,6 +101,8 @@ def process_pdf():
         pdf_bytes = io.BytesIO(file.read())
 
         ics_content = procesar_pdf(pdf_bytes)
+
+        increment_counter()
 
         return send_file(
             io.BytesIO(
