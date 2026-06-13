@@ -177,40 +177,6 @@ export default function Hero() {
               organización durante todo el semestre.
             </span>
           </motion.p>
-
-          {/* KPI */}
-
-          {count !== null && (
-            <motion.div
-              variants={fadeUp}
-              className="
-                mt-6
-                flex
-                items-center
-                justify-center
-                gap-3
-                px-6
-                py-4
-                rounded-2xl
-                bg-white/5
-                backdrop-blur-sm
-                border
-                border-white/10
-                max-w-xs
-                mx-auto
-              "
-            >
-              <i className="ti ti-calendar-check text-3xl text-cyan-400" />
-              <div className="text-left">
-                <div className="text-3xl font-black text-cyan-400">
-                  <AnimatedCounter value={count} />
-                </div>
-                <div className="text-xs text-gray-400">
-                  horarios procesados
-                </div>
-              </div>
-            </motion.div>
-          )}
         </motion.div>
 
         {/* UPLOAD */}
@@ -256,6 +222,42 @@ export default function Hero() {
             </div>
           </motion.div>
         </motion.div>
+
+        {/* KPI */}
+
+        {count !== null && (
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5, delay: 0.3 }}
+            className="
+              mt-8
+              flex
+              items-center
+              justify-center
+              gap-3
+              px-6
+              py-4
+              rounded-2xl
+              bg-white/5
+              backdrop-blur-sm
+              border
+              border-white/10
+              max-w-xs
+              mx-auto
+            "
+          >
+            <i className="ti ti-calendar-check text-3xl text-cyan-400" />
+            <div className="text-left">
+              <div className="text-3xl font-black text-cyan-400">
+                <AnimatedCounter value={count} />
+              </div>
+              <div className="text-xs text-gray-400">
+                horarios procesados
+              </div>
+            </div>
+          </motion.div>
+        )}
       </div>
     </section>
   );
