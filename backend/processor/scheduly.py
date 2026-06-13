@@ -1,15 +1,3 @@
-"""
-Scheduly - Backend
-Recibe un PDF de horario (formato Universidad de Santander - UDES) y devuelve un .ics
- 
-Uso:
-    python scheduly_app.py
-    Luego: POST /procesar  (form-data, campo "file" = pdf)
- 
-Dependencias:
-    pip install flask pdfplumber --break-system-packages
-"""
- 
 import re
 import io
 from datetime import datetime, timedelta, date
