@@ -1,5 +1,7 @@
+import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
 import UploadZone from "../components/UploadZone";
+import { getStats } from "../services/api";
 
 const fadeUp = {
   hidden: {
@@ -13,6 +15,14 @@ const fadeUp = {
 };
 
 export default function Hero() {
+  const [count, setCount] = useState<number | null>(null);
+
+  useEffect(() => {
+    getStats()
+      .then((res) => setCount(res.data.count))
+      .catch(() => {});
+  }, []);
+
   return (
     <section
       className="
@@ -147,6 +157,17 @@ export default function Hero() {
               organización durante todo el semestre.
             </span>
           </motion.p>
+
+          {/* KPI */}
+
+          {count !== null && (
+            <motion.div
+              variants={fadeUp}
+              className="mt-6 text-cyan-400 font-bold text-lg"
+            >
+              +{count} horarios procesados
+            </motion.div>
+          )}
         </motion.div>
 
         {/* UPLOAD */}

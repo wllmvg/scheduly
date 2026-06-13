@@ -7,3 +7,5 @@ const API_URL =
 export const api = axios.create({
   baseURL: API_URL,
 });
+
+export const getStats = () => api.get("/api/stats");
