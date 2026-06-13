@@ -52,6 +52,11 @@ def health():
     )
 
 
+@app.route("/api/ping", methods=["GET"])
+def ping():
+    return jsonify({"status": "ok"}), 200
+
+
 @app.route("/api/stats", methods=["GET"])
 def stats():
     try:
