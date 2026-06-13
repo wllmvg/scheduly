@@ -33,18 +33,23 @@ export default function Credits() {
   return (
     <>
 
-      <main className="
-        relative
-        px-4
-        sm:px-6
-        pt-8
-      ">
+      <main
+        className="
+          relative
+          overflow-hidden
+          px-4
+          sm:px-6
+          pt-8
+        "
+      >
         {/* Background Effects */}
 
         <div className="absolute inset-0 pointer-events-none">
-          <div className="absolute top-20 left-10 w-96 h-96 bg-blue-500/10 rounded-full blur-[120px]" />
+          <div className="absolute top-20 left-10 w-64 h-64
+sm:w-96 sm:h-96 bg-blue-500/10 rounded-full blur-[120px]" />
 
-          <div className="absolute bottom-20 right-10 w-96 h-96 bg-cyan-500/10 rounded-full blur-[120px]" />
+          <div className="absolute bottom-20 right-10 w-64 h-64
+sm:w-96 sm:h-96 bg-cyan-500/10 rounded-full blur-[120px]" />
         </div>
 
         <div className="max-w-6xl mx-auto relative z-10">
@@ -85,11 +90,34 @@ export default function Credits() {
                   Creador de Scheduly UDES
                 </span>
 
-                <h1 className="mt-6 text-5xl md:text-6xl font-black">
+                <h1
+                  className="
+                    mt-6
+                    text-3xl
+                    sm:text-4xl
+                    md:text-5xl
+                    lg:text-6xl
+                    font-black
+                    break-words
+                  "
+                >
                   William Vega
                 </h1>
 
-                <p className="mt-4 text-2xl bg-gradient-to-r from-blue-400 to-cyan-300 bg-clip-text text-transparent font-semibold">
+                <p
+                  className="
+                    mt-4
+                    text-lg
+                    sm:text-xl
+                    md:text-2xl
+                    bg-gradient-to-r
+                    from-blue-400
+                    to-cyan-300
+                    bg-clip-text
+                    text-transparent
+                    font-semibold
+                  "
+                >
                   Software Developer
                 </p>
 
@@ -180,8 +208,10 @@ export default function Credits() {
                   src={profilePhoto}
                   alt="William Vega"
                   className="
-                    w-80
-                    h-80
+                    w-full
+                    max-w-[280px]
+                    sm:max-w-[320px]
+                    aspect-square
                     object-cover
                     rounded-3xl
                     border

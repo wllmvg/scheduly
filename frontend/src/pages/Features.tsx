@@ -31,18 +31,23 @@ export default function Features() {
   return (
     <>
 
-      <main className="
-        relative
-        px-4
-        sm:px-6
-        pt-8
-      ">
+      <main
+        className="
+          relative
+          overflow-hidden
+          px-4
+          sm:px-6
+          pt-8
+        "
+      >
         {/* Background */}
 
-        <div className="absolute inset-0 pointer-events-none">
-          <div className="absolute top-20 left-10 w-96 h-96 bg-blue-500/10 rounded-full blur-[120px]" />
+        <div className="absolute inset-0 overflow-hidden pointer-events-none">
+          <div className="absolute top-20 left-10 w-64 h-64
+sm:w-96 sm:h-96 bg-blue-500/10 rounded-full blur-[120px]" />
 
-          <div className="absolute bottom-20 right-10 w-96 h-96 bg-cyan-500/10 rounded-full blur-[120px]" />
+          <div className="absolute bottom-20 right-10 w-64 h-64
+sm:w-96 sm:h-96 bg-cyan-500/10 rounded-full blur-[120px]" />
         </div>
 
         <div className="max-w-6xl mx-auto relative z-10">
@@ -60,11 +65,31 @@ export default function Features() {
             }}
             className="text-center"
           >
-            <h1 className="text-5xl md:text-6xl font-black">
+            <h1
+              className="
+                text-3xl
+                sm:text-4xl
+                md:text-5xl
+                lg:text-6xl
+                font-black
+                break-words
+              "
+            >
               ¿Cómo funciona?
             </h1>
 
-            <p className="max-w-3xl mx-auto mt-6 text-lg text-gray-400 leading-relaxed">
+            <p
+              className="
+                max-w-3xl
+                mx-auto
+                mt-6
+                text-sm
+                sm:text-base
+                md:text-lg
+                text-gray-400
+                leading-relaxed
+              "
+            >
               Scheduly automatiza una tarea que
               normalmente toma varios minutos.
               Convierte tu horario académico en
