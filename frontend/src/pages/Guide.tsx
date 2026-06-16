@@ -5,7 +5,6 @@ import {
   useSpring,
 } from "framer-motion";
 import {
-  ArrowLeft,
   ExternalLink,
   CheckCircle2,
 } from "lucide-react";

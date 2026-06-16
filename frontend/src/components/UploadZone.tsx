@@ -8,53 +8,35 @@ import { api } from "../services/api";
 import { useScheduly } from "../context/SchedulyContext";
 
 export default function UploadZone() {
-  const inputRef =
-    useRef<HTMLInputElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
 
   const navigate = useNavigate();
 
-  const {
-    setLoading,
-    setDownloadUrl,
-  } = useScheduly();
+  const { setLoading, setIcsContent } = useScheduly();
 
-  const handleUpload = async (
-    file: File
-  ) => {
+  const handleUpload = async (file: File) => {
     try {
       setLoading(true);
 
       const formData = new FormData();
-
       formData.append("file", file);
 
-      const response = await api.post(
-        "/api/process",
-        formData,
-        {
-          responseType: "blob",
-        }
-      );
+      const response = await api.post("/api/process", formData, {
+        responseType: "blob",
+      });
 
-      const blob = new Blob(
-        [response.data],
-        {
-          type: "text/calendar",
-        }
-      );
+      // El backend devuelve el ICS como blob/texto directo
+      const text = await (response.data as Blob).text();
 
-      const url =
-        window.URL.createObjectURL(blob);
+      if (!text.includes("BEGIN:VCALENDAR")) {
+        throw new Error("La respuesta del servidor no es un calendario válido.");
+      }
 
-      setDownloadUrl(url);
-
+      setIcsContent(text);
       navigate("/result");
     } catch (error) {
       console.error(error);
-
-      alert(
-        "Error procesando el horario."
-      );
+      alert("Error procesando el horario.");
     } finally {
       setLoading(false);
     }
@@ -63,9 +45,7 @@ export default function UploadZone() {
   return (
     <section className="w-full flex justify-center">
       <div
-        onClick={() =>
-          inputRef.current?.click()
-        }
+        onClick={() => inputRef.current?.click()}
         className="
           cursor-pointer
           border-2
@@ -80,10 +60,7 @@ export default function UploadZone() {
           transition
         "
       >
-        <UploadCloud
-          size={64}
-          className="mx-auto mb-4"
-        />
+        <UploadCloud size={64} className="mx-auto mb-4" />
 
         <h3 className="text-2xl font-bold">
           Sube tu horario PDF
@@ -99,12 +76,8 @@ export default function UploadZone() {
           accept=".pdf"
           hidden
           onChange={(e) => {
-            const file =
-              e.target.files?.[0];
-
-            if (file) {
-              handleUpload(file);
-            }
+            const file = e.target.files?.[0];
+            if (file) handleUpload(file);
           }}
         />
       </div>
