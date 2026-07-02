@@ -21,12 +21,16 @@ export default function UploadZone() {
       const formData = new FormData();
       formData.append("file", file);
 
-      const response = await api.post("/api/process", formData, {
-        responseType: "blob",
-      });
+      const response = await api.post("/api/process", formData);
 
-      // El backend devuelve el ICS como blob/texto directo
-      const text = await (response.data as Blob).text();
+      // El backend devuelve JSON: { success, ics_content } (o { success: false, message })
+      const data = response.data as { success: boolean; ics_content?: string; message?: string };
+
+      if (!data.success || !data.ics_content) {
+        throw new Error(data.message || "La respuesta del servidor no es un calendario válido.");
+      }
+
+      const text = data.ics_content;
 
       if (!text.includes("BEGIN:VCALENDAR")) {
         throw new Error("La respuesta del servidor no es un calendario válido.");
