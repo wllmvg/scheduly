@@ -84,6 +84,61 @@ def _reparar_palabras_cortadas(texto: str) -> str:
 
     return texto
 
+
+# ---------------------------------------------------------------------------
+# 0.1 REPARACIÓN DE NÚMEROS ROMANOS PEGADOS ("INGLESVII" -> "INGLES VII")
+# ---------------------------------------------------------------------------
+# Este es el problema inverso al del wrap: aquí el PDF entrega el texto SIN
+# ningún espacio en absoluto entre el nombre de la asignatura y su nivel en
+# números romanos. Solo se aplica sobre "asignatura", nunca sobre "aula".
+
+# Ordenados de más largo a más corto para que el regex intente primero el
+# numeral más largo y no corte "VIII" quedándose solo con "V".
+_ROMANOS_ORDENADOS = sorted(
+    ["I", "II", "III", "IV", "V", "VI", "VII", "VIII", "IX", "X", "XI", "XII"],
+    key=len, reverse=True,
+)
+
+# Palabra (4+ letras) pegada directamente a un numeral romano al final del
+# token, sin espacio entre medio. El prefijo es no-goloso para que el motor
+# vaya alargándolo hasta encontrar el sufijo romano correcto.
+_PATRON_ROMANO_PEGADO = re.compile(
+    r"\b([A-ZÁÉÍÓÚÜÑ]{4,}?)(" + "|".join(_ROMANOS_ORDENADOS) + r")\b"
+)
+
+
+def _separar_romanos_pegados(texto: str) -> str:
+    """'INGLESVII' -> 'INGLES VII'. Solo debe aplicarse a asignatura."""
+    def _sep(m):
+        return f"{m.group(1)} {m.group(2)}"
+    return _PATRON_ROMANO_PEGADO.sub(_sep, texto)
+
+
+# ---------------------------------------------------------------------------
+# 0.2 NORMALIZACIÓN DE AULAS VIRTUALES ("AULAV-111" -> "VIRTUAL")
+# ---------------------------------------------------------------------------
+def _normalizar_aula(aula: str) -> str:
+    """
+    Repara el espacio faltante entre 'AULA' y el código de salón
+    ('AULAV-111' -> 'AULA V-111'), y si el código de salón empieza con 'V'
+    (aula virtual), reemplaza el valor completo por 'VIRTUAL'.
+    """
+    aula = aula.strip()
+    if not aula:
+        return aula
+
+    # separar "AULA" pegado al código, si aplica
+    aula_reparada = re.sub(r"^AULA(?=[A-Z0-9])", "AULA ", aula, flags=re.IGNORECASE)
+
+    # aislar el código de salón (quitando el prefijo "AULA " si está presente)
+    codigo = re.sub(r"^AULA\s+", "", aula_reparada, flags=re.IGNORECASE).strip()
+
+    if codigo and codigo[0].upper() == "V":
+        return "VIRTUAL"
+
+    return aula_reparada
+
+
 # ---------------------------------------------------------------------------
 # 1. EXTRACCIÓN DE LA GRILLA DE HORARIO
 # ---------------------------------------------------------------------------
@@ -289,7 +344,10 @@ def _parsear_celda(texto):
                 codigo, asignatura, aula = "", parte, ""
 
         asignatura = _reparar_palabras_cortadas(_clean(asignatura.strip()))
+        asignatura = _separar_romanos_pegados(asignatura)
+
         aula = _reparar_palabras_cortadas(_clean(aula.strip()))
+        aula = _normalizar_aula(aula)
 
         bloques.append({
             "codigo": codigo.replace(" ", ""),
