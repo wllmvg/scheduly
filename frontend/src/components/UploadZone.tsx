@@ -21,18 +21,24 @@ export default function UploadZone() {
       const formData = new FormData();
       formData.append("file", file);
 
+      // El backend responde JSON: { success, ics_content } o { success: false, message }.
+      // Antes se pedía responseType: "blob" y se leía el texto crudo de la
+      // respuesta (el JSON completo, con los \r\n escapados como texto
+      // literal), en vez de parsear el JSON y quedarnos con el campo
+      // ics_content real. Eso rompía todo el parseo posterior del .ics.
       const response = await api.post("/api/process", formData);
 
-      // El backend devuelve JSON: { success, ics_content } (o { success: false, message })
-      const data = response.data as { success: boolean; ics_content?: string; message?: string };
+      const data = response.data as
+        | { success: true; ics_content: string }
+        | { success: false; message: string };
 
-      if (!data.success || !data.ics_content) {
-        throw new Error(data.message || "La respuesta del servidor no es un calendario válido.");
+      if (!data.success) {
+        throw new Error(data.message || "No se pudo procesar el horario.");
       }
 
       const text = data.ics_content;
 
-      if (!text.includes("BEGIN:VCALENDAR")) {
+      if (!text || !text.includes("BEGIN:VCALENDAR")) {
         throw new Error("La respuesta del servidor no es un calendario válido.");
       }
 

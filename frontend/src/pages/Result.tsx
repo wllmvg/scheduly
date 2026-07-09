@@ -12,11 +12,18 @@ import {
   Calendar,
   Loader2,
   ShieldAlert,
+  Plus,
 } from "lucide-react";
 
 import { useScheduly } from "../context/SchedulyContext";
 import { parseIcsToEvents } from "../utils/parseIcs";
-import { signInWithGoogle, createCalendarEvents } from "../services/googleCalendar";
+import {
+  signInWithGoogle,
+  createCalendarEvents,
+  listCalendars,
+  createNewCalendar,
+  type GoogleCalendarInfo,
+} from "../services/googleCalendar";
 
 type SyncStatus = "idle" | "loading" | "success" | "error";
 
@@ -89,6 +96,9 @@ const INSTRUCTIONS: Record<string, DeviceInstructions> = {
   },
 };
 
+// Opción especial para representar "crear un calendario nuevo" en la lista
+const NEW_CALENDAR_OPTION = "__new__";
+
 export default function Result() {
   const { icsContent } = useScheduly();
 
@@ -99,6 +109,15 @@ export default function Result() {
 
   const [syncStatus, setSyncStatus]   = useState<SyncStatus>("idle");
   const [syncMessage, setSyncMessage] = useState("");
+
+  // --- Estado para el selector de calendario ---
+  const [showCalendarPicker, setShowCalendarPicker] = useState(false);
+  const [calendarsLoading, setCalendarsLoading]      = useState(false);
+  const [calendars, setCalendars]                    = useState<GoogleCalendarInfo[]>([]);
+  const [selectedCalendarId, setSelectedCalendarId]  = useState<string>(NEW_CALENDAR_OPTION);
+  const [newCalendarName, setNewCalendarName]        = useState("Horario UDES");
+  const [pendingAccessToken, setPendingAccessToken]  = useState<string | null>(null);
+  const [pickerError, setPickerError]                = useState("");
 
   if (!icsContent) return <Navigate to="/" />;
 
@@ -117,22 +136,65 @@ export default function Result() {
     setShowIcsModal(true);
   };
 
-  // Agrega a Google Calendar
-  const handleAddToGoogleCalendar = async () => {
+  // Paso 1: el usuario acepta la advertencia de Google -> inicia sesión y
+  // carga sus calendarios para que elija dónde importar el horario.
+  const handleConnectGoogle = async () => {
     setShowGoogleWarning(false);
+    setPickerError("");
     try {
-      setSyncStatus("loading");
-      setSyncMessage("");
+      setCalendarsLoading(true);
       const accessToken = await signInWithGoogle();
-      const events = parseIcsToEvents(icsContent);
-      if (events.length === 0) throw new Error("No se encontraron eventos en el horario.");
-      const { created, errors } = await createCalendarEvents(accessToken, events);
-      if (created === 0) throw new Error("No se pudo crear ningún evento. Intenta de nuevo.");
-      setSyncStatus("success");
-      setSyncMessage(errors > 0 ? `${created} eventos agregados (${errors} con error).` : `${created} eventos agregados correctamente.`);
+      setPendingAccessToken(accessToken);
+
+      const userCalendars = await listCalendars(accessToken);
+      setCalendars(userCalendars);
+
+      const principal = userCalendars.find((c) => c.primary);
+      setSelectedCalendarId(NEW_CALENDAR_OPTION);
+      setShowCalendarPicker(true);
+
+      // Solo para referencia visual, no afecta la lógica de creación:
+      void principal;
     } catch (e: any) {
       setSyncStatus("error");
-      setSyncMessage(e.message || "Error desconocido. Intenta de nuevo.");
+      setSyncMessage(e.message || "No se pudo conectar con Google. Intenta de nuevo.");
+    } finally {
+      setCalendarsLoading(false);
+    }
+  };
+
+  // Paso 2: el usuario confirma el calendario elegido -> se crean los eventos ahí.
+  const handleConfirmCalendarAndSync = async () => {
+    if (!pendingAccessToken) return;
+
+    try {
+      setPickerError("");
+      setSyncStatus("loading");
+      setSyncMessage("");
+
+      let calendarId = selectedCalendarId;
+
+      if (selectedCalendarId === NEW_CALENDAR_OPTION) {
+        const nombre = newCalendarName.trim() || "Horario UDES";
+        calendarId = await createNewCalendar(pendingAccessToken, nombre);
+      }
+
+      const events = parseIcsToEvents(icsContent);
+      if (events.length === 0) throw new Error("No se encontraron eventos en el horario.");
+
+      const { created, errors } = await createCalendarEvents(pendingAccessToken, events, calendarId);
+      if (created === 0) throw new Error("No se pudo crear ningún evento. Intenta de nuevo.");
+
+      setSyncStatus("success");
+      setSyncMessage(
+        errors > 0
+          ? `${created} eventos agregados (${errors} con error).`
+          : `${created} eventos agregados correctamente.`
+      );
+      setShowCalendarPicker(false);
+    } catch (e: any) {
+      setSyncStatus("error");
+      setPickerError(e.message || "Error desconocido. Intenta de nuevo.");
     }
   };
 
@@ -173,7 +235,7 @@ export default function Result() {
             {/* GOOGLE CALENDAR */}
             <button
               onClick={() => syncStatus !== "success" && setShowGoogleWarning(true)}
-              disabled={syncStatus === "loading"}
+              disabled={syncStatus === "loading" || calendarsLoading}
               className={`
                 cursor-pointer w-full inline-flex items-center justify-center gap-3
                 px-6 py-4 rounded-2xl font-semibold transition
@@ -186,15 +248,16 @@ export default function Result() {
                 }
               `}
             >
-              {syncStatus === "loading" && <Loader2 size={20} className="animate-spin shrink-0" />}
-              {syncStatus === "idle"    && <Calendar size={20} className="shrink-0" />}
+              {(syncStatus === "loading" || calendarsLoading) && <Loader2 size={20} className="animate-spin shrink-0" />}
+              {syncStatus === "idle" && !calendarsLoading && <Calendar size={20} className="shrink-0" />}
               {syncStatus === "success" && <CheckCircle2 size={20} className="shrink-0" />}
-              {syncStatus === "error"   && <Calendar size={20} className="shrink-0" />}
+              {syncStatus === "error" && !calendarsLoading && <Calendar size={20} className="shrink-0" />}
               <span>
-                {syncStatus === "loading" && "Agregando..."}
-                {syncStatus === "idle"    && "Agregar a Google Calendar"}
-                {syncStatus === "success" && "¡Agregado!"}
-                {syncStatus === "error"   && "Reintentar"}
+                {calendarsLoading && "Conectando..."}
+                {!calendarsLoading && syncStatus === "loading" && "Agregando..."}
+                {!calendarsLoading && syncStatus === "idle" && "Agregar a Google Calendar"}
+                {!calendarsLoading && syncStatus === "success" && "¡Agregado!"}
+                {!calendarsLoading && syncStatus === "error" && "Reintentar"}
               </span>
             </button>
 
@@ -275,8 +338,8 @@ export default function Result() {
                   {
                     num: 3,
                     text: "Google te mostrará los permisos que solicita Scheduly:",
-                    highlight: '"Ver y editar eventos de todos tus calendarios"',
-                    desc: ". Haz clic en Continuar para aceptar.",
+                    highlight: '"Ver, editar, compartir y eliminar permanentemente todos los calendarios a los que puedas acceder mediante Google Calendar"',
+                    desc: ". Haz clic en Continuar para aceptar (esto es necesario para poder mostrarte tu lista de calendarios y dejarte elegir dónde importar el horario).",
                   },
                   {
                     num: 4,
@@ -297,11 +360,11 @@ export default function Result() {
               </ol>
 
               <p className="text-gray-500 text-xs mb-6 leading-relaxed">
-                Scheduly solo solicita acceso para <strong className="text-gray-400">crear eventos en tu calendario</strong>. No lee tus eventos existentes ni accede a ningún otro dato de tu cuenta.
+                Después de conectar, te dejaremos elegir a qué calendario quieres importar tu horario (o crear uno nuevo), para no tocar tu calendario principal por accidente.
               </p>
 
               <button
-                onClick={handleAddToGoogleCalendar}
+                onClick={handleConnectGoogle}
                 className="cursor-pointer w-full inline-flex items-center justify-center gap-2 px-6 py-3 rounded-2xl bg-gradient-to-r from-blue-500 to-purple-500 text-white font-semibold hover:opacity-90 transition"
               >
                 <Calendar size={18} />
@@ -324,6 +387,120 @@ export default function Result() {
                 </button>
               </div>
 
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* ── MODAL: SELECCIONAR CALENDARIO DESTINO ── */}
+      <AnimatePresence>
+        {showCalendarPicker && (
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm px-4">
+            <motion.div initial={{ opacity: 0, y: 40, scale: 0.96 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, y: 40, scale: 0.96 }} transition={{ duration: 0.3, type: "spring" }} className="relative w-full max-w-lg max-h-[85vh] overflow-y-auto backdrop-blur-xl bg-white/10 border border-white/10 rounded-3xl p-6 sm:p-8">
+
+              <button
+                onClick={() => {
+                  setShowCalendarPicker(false);
+                  if (syncStatus === "loading") setSyncStatus("idle");
+                }}
+                className="cursor-pointer absolute top-4 right-4 text-gray-400 hover:text-white transition"
+              >
+                <X size={22} />
+              </button>
+
+              <div className="flex items-center gap-3 mb-2">
+                <Calendar size={26} className="text-blue-400 shrink-0" />
+                <h2 className="text-xl font-bold pr-8">¿A qué calendario lo importamos?</h2>
+              </div>
+
+              <p className="text-gray-400 text-sm mb-6 leading-relaxed">
+                Elige un calendario existente o crea uno nuevo para no mezclar el horario con tus demás eventos.
+              </p>
+
+              <div className="space-y-2 mb-4 max-h-[40vh] overflow-y-auto pr-1">
+                {/* Opción: crear calendario nuevo */}
+                <label
+                  className={`
+                    flex items-center gap-3 p-4 rounded-2xl border cursor-pointer transition
+                    ${selectedCalendarId === NEW_CALENDAR_OPTION
+                      ? "border-blue-400/50 bg-blue-500/10"
+                      : "border-white/10 bg-white/5 hover:bg-white/10"}
+                  `}
+                >
+                  <input
+                    type="radio"
+                    name="calendar"
+                    className="accent-blue-500 shrink-0"
+                    checked={selectedCalendarId === NEW_CALENDAR_OPTION}
+                    onChange={() => setSelectedCalendarId(NEW_CALENDAR_OPTION)}
+                  />
+                  <Plus size={18} className="text-blue-400 shrink-0" />
+                  <div className="flex-1 text-left">
+                    <p className="font-medium text-sm">Crear un calendario nuevo</p>
+                    {selectedCalendarId === NEW_CALENDAR_OPTION && (
+                      <input
+                        type="text"
+                        value={newCalendarName}
+                        onChange={(e) => setNewCalendarName(e.target.value)}
+                        placeholder="Nombre del calendario"
+                        className="mt-2 w-full bg-black/30 border border-white/10 rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-blue-400/50"
+                        onClick={(e) => e.stopPropagation()}
+                      />
+                    )}
+                  </div>
+                </label>
+
+                {/* Calendarios existentes */}
+                {calendars.map((cal) => (
+                  <label
+                    key={cal.id}
+                    className={`
+                      flex items-center gap-3 p-4 rounded-2xl border cursor-pointer transition
+                      ${selectedCalendarId === cal.id
+                        ? "border-blue-400/50 bg-blue-500/10"
+                        : "border-white/10 bg-white/5 hover:bg-white/10"}
+                    `}
+                  >
+                    <input
+                      type="radio"
+                      name="calendar"
+                      className="accent-blue-500 shrink-0"
+                      checked={selectedCalendarId === cal.id}
+                      onChange={() => setSelectedCalendarId(cal.id)}
+                    />
+                    <span
+                      className="w-3 h-3 rounded-full shrink-0"
+                      style={{ backgroundColor: cal.backgroundColor || "#3b82f6" }}
+                    />
+                    <span className="flex-1 text-left text-sm truncate">
+                      {cal.name}
+                      {cal.primary && <span className="text-gray-500"> (principal)</span>}
+                    </span>
+                  </label>
+                ))}
+              </div>
+
+              {pickerError && (
+                <p className="text-red-400 text-sm mb-4">{pickerError}</p>
+              )}
+
+              <button
+                onClick={handleConfirmCalendarAndSync}
+                disabled={syncStatus === "loading"}
+                className="cursor-pointer w-full inline-flex items-center justify-center gap-2 px-6 py-3 rounded-2xl bg-gradient-to-r from-blue-500 to-purple-500 text-white font-semibold hover:opacity-90 transition disabled:opacity-70 disabled:cursor-not-allowed"
+              >
+                {syncStatus === "loading" ? (
+                  <>
+                    <Loader2 size={18} className="animate-spin" />
+                    Agregando eventos...
+                  </>
+                ) : (
+                  <>
+                    <CheckCircle2 size={18} />
+                    Confirmar e importar aquí
+                  </>
+                )}
+              </button>
             </motion.div>
           </motion.div>
         )}

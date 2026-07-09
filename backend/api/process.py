@@ -8,7 +8,7 @@ from flask import request
 from flask import jsonify
 from flask_cors import CORS
 
-from processor.scheduly import procesar_pdf
+from scheduly_processor.scheduly import procesar_pdf
 
 app = Flask(__name__)
 
