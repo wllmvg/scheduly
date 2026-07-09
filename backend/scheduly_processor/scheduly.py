@@ -29,38 +29,41 @@ FRAGMENTOS_UNIDOS = {
     ("EDUCACI", "ÓN"): "EDUCACIÓN",
     ("GESTI", "ÓN"): "GESTIÓN",
     ("FORMACI", "ÓN"): "FORMACIÓN",
+    ("INFORMÁTIC", "A"): "INFORMÁTICA",
+    ("INCIDENT", "ES"): "INCIDENTES",
+    ("COG", "NOSCITIVA"): "COGNOSCITIVA",
+    ("CUALITA", "TIVA"): "CUALITATIVA",
+    ("INTE", "RVENCIÓN"): "INTERVENCIÓN",
 }
-
-# Palabras conectoras cortas del español que NUNCA deben pegarse a la
-# palabra anterior, aunque coincidan con el patrón de "fragmento corto".
-_CONECTORES = {
-    "DE", "Y", "EN", "EL", "LA", "LOS", "LAS", "DEL", "AL",
-    "SU", "SUS", "UN", "UNA", "UNOS", "UNAS", "CON", "SIN", "POR",
-    "PARA", "QUE", "SE", "SI", "NO", "LE", "LES",
-}
-
-# Palabra larga (4+) + espacio + fragmento corto (1-7), ambos en mayúsculas.
-_PATRON_CORTE = re.compile(
-    r"\b([A-ZÁÉÍÓÚÜÑ]{4,})\s+([A-ZÁÉÍÓÚÜÑ]{1,7})\b"
-)
 
 
 def _reparar_palabras_cortadas(texto: str) -> str:
     """
     Repara espacios incorrectos introducidos por pdfplumber cuando una palabra
-    queda partida dentro de la misma línea.
+    queda partida dentro de la misma línea, usando ÚNICAMENTE un diccionario
+    de fragmentos conocidos (FRAGMENTOS_UNIDOS).
 
-    Ejemplos:
+    Deliberadamente NO se usa una heurística genérica tipo "palabra larga +
+    fragmento corto = unir", porque eso produce falsos positivos: pega
+    palabras que en realidad son distintas y van separadas (ej. "PSICOLOGÍA"
+    + "SOCIAL" -> "PSICOLOGÍASOCIAL", cuando debían quedar separadas), o
+    falla cuando el primer fragmento es corto (ej. "COG" + "NOSCITIVA").
+
+    Cuando aparezca un nuevo caso de palabra cortada en un horario nuevo,
+    agrégalo como tupla a FRAGMENTOS_UNIDOS.
+
+    Ejemplos ya cubiertos:
         INFORMÁTIC A  -> INFORMÁTICA
         INCIDENT ES   -> INCIDENTES
         PROGRAMACIÓ N -> PROGRAMACIÓN
         COMPUTACI ÓN  -> COMPUTACIÓN
+        COG NOSCITIVA -> COGNOSCITIVA
+        CUALITA TIVA  -> CUALITATIVA
+        INTE RVENCIÓN -> INTERVENCIÓN
     """
 
     texto = re.sub(r"\s+", " ", texto).strip()
 
-    # 1. Fragmentos conocidos exactos (máxima prioridad, cero riesgo de
-    #    falso positivo). Agrega aquí los que detectes en nuevos horarios.
     for (a, b), unido in FRAGMENTOS_UNIDOS.items():
         texto = re.sub(
             rf"\b{re.escape(a)}\s+{re.escape(b)}\b",
@@ -68,19 +71,6 @@ def _reparar_palabras_cortadas(texto: str) -> str:
             texto,
             flags=re.IGNORECASE,
         )
-
-    # 2. Heurística general: una palabra "larga" (4+ letras) seguida de un
-    #    fragmento corto (1-7 letras) que NO es una palabra conectora real
-    #    en español se asume como la cola de una palabra cortada por el
-    #    wrap del PDF, y se pega. No usamos lookbehind de ancho variable
-    #    porque no es portable entre versiones del motor `re`.
-    def _merge(match):
-        primero, segundo = match.group(1), match.group(2)
-        if segundo.upper() in _CONECTORES:
-            return match.group(0)
-        return primero + segundo
-
-    texto = _PATRON_CORTE.sub(_merge, texto)
 
     return texto
 
@@ -326,18 +316,19 @@ def _parsear_celda(texto):
     Puede repetirse varias veces dentro de la misma celda.
     """
     bloques = []
-    # separar por cada ocurrencia de un código tipo "123456-X:" o "1234-X:"
-    partes = re.split(r"(?=(?:^|(?<=\s))\d{3,6}-?[A-Z]:)", texto)
+    # separar por cada ocurrencia de un código tipo "123456-X:", "1234-X:"
+    # o con sufijo de varias letras, ej. "9317-MVI:" (modalidad virtual)
+    partes = re.split(r"(?=(?:^|(?<=\s))\d{3,6}-?[A-Z]{1,4}:)", texto)
     for parte in partes:
         parte = parte.strip()
         if not parte:
             continue
-        m = re.match(r"(\d{3,6}-?[A-Z]):\s*(.*?)\s*Aula:\s*(.*)", parte)
+        m = re.match(r"(\d{3,6}-?[A-Z]{1,4}):\s*(.*?)\s*Aula:\s*(.*)", parte)
         if m:
             codigo, asignatura, aula = m.groups()
         else:
             # sin "Aula:" -> todo es asignatura
-            m2 = re.match(r"(\d{3,6}-?[A-Z]):\s*(.*)", parte)
+            m2 = re.match(r"(\d{3,6}-?[A-Z]{1,4}):\s*(.*)", parte)
             if m2:
                 codigo, asignatura, aula = m2.group(1), m2.group(2), ""
             else:
@@ -478,19 +469,27 @@ def generar_ics(eventos, fechas_por_codigo):
         # Blindaje: por si el código de grupo quedó pegado al nombre de la
         # asignatura (código al inicio o en cualquier parte del texto).
         asignatura = re.sub(
-            r'^\d{3,6}-?[A-Z]\s*:\s*',
+            r'^\d{3,6}-?[A-Z]{1,4}\s*:\s*',
             '',
             asignatura,
             flags=re.IGNORECASE
         ).strip()
         asignatura = re.sub(
-            r'\b\d{3,6}-?[A-Z]:\s*',
+            r'\b\d{3,6}-?[A-Z]{1,4}:\s*',
             '',
             asignatura,
             flags=re.IGNORECASE
         ).strip()
 
-        summary = f"{aula}: {asignatura}" if aula else asignatura
+        es_virtual = aula.upper() == "VIRTUAL"
+
+        if es_virtual:
+            summary = f"VIRTUAL - {asignatura}"
+        elif aula:
+            summary = f"{aula}: {asignatura}"
+        else:
+            summary = asignatura
+
         descripcion = ev["codigo"]
 
         lines.append("BEGIN:VEVENT")
@@ -500,7 +499,7 @@ def generar_ics(eventos, fechas_por_codigo):
         lines.append(f"DTEND:{dtend.strftime('%Y%m%dT%H%M%S')}")
         lines.append(f"RRULE:FREQ=WEEKLY;UNTIL={until}")
         lines.append(_fold_line(f"SUMMARY:{summary}"))
-        if aula:
+        if aula and not es_virtual:
             lines.append(_fold_line(f"LOCATION:{aula}"))
 
         lines.append("BEGIN:VALARM")
